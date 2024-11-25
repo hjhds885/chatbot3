@@ -520,7 +520,7 @@ def app_sst_with_video():
         webrtc_ctx1 = webrtc_streamer(
             key="example",
             desired_playing_state=True, 
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            #rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
             media_stream_constraints={"video": True, "audio": False},
             video_processor_factory=VideoTransformer,
             )
