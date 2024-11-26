@@ -513,6 +513,14 @@ def app_sst_with_video():
         silence_frames_threshold (int, オプション): 文字起こしをトリガーするための連続する静寂フレームの数。デフォルトは100フレーム。
     """
     text_input = ""
+
+    #Streamlitでは、ユーザーインタラクションや状態を管理しないと、
+    #コンポーネントがページリロードとみなされ、アプリが頻繁に更新されることがあります。
+    #webrtc_streamer コンポーネントが再初期化されるたびに、リロードがトリガーされる可能性があります。
+    # セッションステートの初期化
+    if "webrtc_ctx1" not in st.session_state:
+        st.session_state["webrtc_ctx1"] = None
+    
     st.session_state.audio_receiver_size =4096 #2048
     # サイドバーにWebRTCストリームを表示
     with st.sidebar:
@@ -524,6 +532,7 @@ def app_sst_with_video():
             media_stream_constraints={"video": True, "audio": False},
             video_processor_factory=VideoTransformer,
             )
+    webrtc_ctx1 = st.session_state["webrtc_ctx1"]    
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
