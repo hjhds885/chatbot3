@@ -532,8 +532,8 @@ def app_sst_with_video():
             media_stream_constraints={"video": True, "audio": False},
             video_processor_factory=VideoTransformer,
             )
-    webrtc_ctx1 = st.session_state["webrtc_ctx1"] 
-    st.write("WebRTCコンテキストの状態:", webrtc_ctx1)
+    ctx1 = st.session_state["webrtc_ctx1"] 
+    st.write("WebRTCコンテキストの状態:", ctx1)
 
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
@@ -722,7 +722,7 @@ def qa(text_input,webrtc_ctx1,cap_title,cap_image):
         #現在の画像をキャプチャする
         #キャプチャー画像入力
         #if webrtc_ctx1.video_transformer: 
-        if webrtc_ctx1 and webrtc_ctx1.video_transformer:
+        if ctx1 and webrtc_ctx1.video_transformer:
             cap = webrtc_ctx1.video_transformer.frame
         if cap is not None :
             #st.sidebar.header("Capture Image") 
