@@ -517,13 +517,13 @@ def app_sst_with_video():
     # サイドバーにWebRTCストリームを表示
     with st.sidebar:
         st.header("Webcam Stream")
-        webrtc_ctx1 = webrtc_streamer(
-            key="example",
-            desired_playing_state=True, 
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": False},
-            video_processor_factory=VideoTransformer,
-            )
+        #webrtc_ctx1 = webrtc_streamer(
+            #key="example",
+            #desired_playing_state=True, 
+            #rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            #media_stream_constraints={"video": True, "audio": False},
+            #video_processor_factory=VideoTransformer,
+            #)
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
