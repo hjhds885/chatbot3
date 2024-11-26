@@ -518,7 +518,7 @@ def app_sst_with_video():
     #コンポーネントがページリロードとみなされ、アプリが頻繁に更新されることがあります。
     #webrtc_streamer コンポーネントが再初期化されるたびに、リロードがトリガーされる可能性があります。
     # セッションステートの初期化
-    if "webrtc_ctx1" not in st.session_state:
+    if "ctx1" not in st.session_state:
         st.session_state["webrtc_ctx1"] = None
     
     st.session_state.audio_receiver_size =4096 #2048
