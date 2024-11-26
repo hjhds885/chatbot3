@@ -513,28 +513,18 @@ def app_sst_with_video():
         silence_frames_threshold (int, オプション): 文字起こしをトリガーするための連続する静寂フレームの数。デフォルトは100フレーム。
     """
     text_input = ""
-
-    #Streamlitでは、ユーザーインタラクションや状態を管理しないと、
-    #コンポーネントがページリロードとみなされ、アプリが頻繁に更新されることがあります。
-    #webrtc_streamer コンポーネントが再初期化されるたびに、リロードがトリガーされる可能性があります。
-    # セッションステートの初期化
-    if "ctx1" not in st.session_state:
-        st.session_state["webrtc_ctx1"] = None
-    
+   
     st.session_state.audio_receiver_size =4096 #2048
     # サイドバーにWebRTCストリームを表示
-    with st.sidebar:
-        st.header("Webcam Stream")
-        webrtc_ctx1 = webrtc_streamer(
-            key="example",
-            desired_playing_state=True, 
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": False},
-            video_processor_factory=VideoTransformer,
-            )
-    ctx1 = st.session_state["webrtc_ctx1"] 
-    st.write("WebRTCコンテキストの状態:", ctx1)
-
+    #with st.sidebar:
+    st.header("Webcam Stream")
+    webrtc_ctx1 = webrtc_streamer(
+        key="example",
+        desired_playing_state=True, 
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints={"video": True, "audio": False},
+        video_processor_factory=VideoTransformer,
+        )
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
@@ -721,8 +711,7 @@ def qa(text_input,webrtc_ctx1,cap_title,cap_image):
         # 画像と問い合わせ入力があったときの処理
         #現在の画像をキャプチャする
         #キャプチャー画像入力
-        #if webrtc_ctx1.video_transformer: 
-        if ctx1 and webrtc_ctx1.video_transformer:
+        if webrtc_ctx1.video_transformer: 
             cap = webrtc_ctx1.video_transformer.frame
         if cap is not None :
             #st.sidebar.header("Capture Image") 
