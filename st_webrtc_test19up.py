@@ -532,7 +532,9 @@ def app_sst_with_video():
             media_stream_constraints={"video": True, "audio": False},
             video_processor_factory=VideoTransformer,
             )
-    webrtc_ctx1 = st.session_state["webrtc_ctx1"]    
+    webrtc_ctx1 = st.session_state["webrtc_ctx1"] 
+    st.write("WebRTCコンテキストの状態:", webrtc_ctx1)
+
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
@@ -719,13 +721,16 @@ def qa(text_input,webrtc_ctx1,cap_title,cap_image):
         # 画像と問い合わせ入力があったときの処理
         #現在の画像をキャプチャする
         #キャプチャー画像入力
-        if webrtc_ctx1.video_transformer:  
+        #if webrtc_ctx1.video_transformer: 
+        if webrtc_ctx1 and webrtc_ctx1.video_transformer:
             cap = webrtc_ctx1.video_transformer.frame
         if cap is not None :
             #st.sidebar.header("Capture Image") 
             cap_title.header("Capture Image")     
             cap_image.image(cap, channels="BGR")
-            # if st.button("Query LLM : 画像の内容を説明して"):
+        else:
+            st.warning("WebRTCストリームがまだ初期化されていません。")
+            
     # if st.button("Query LLM : 画像の内容を説明して"):
     with st.spinner("Querying LLM..."):
         loop = asyncio.new_event_loop()
