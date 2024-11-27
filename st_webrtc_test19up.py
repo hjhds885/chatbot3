@@ -516,15 +516,15 @@ def app_sst_with_video():
    
     st.session_state.audio_receiver_size =4096 #2048
     # サイドバーにWebRTCストリームを表示
-    #with st.sidebar:
-    st.header("Webcam Stream")
-    webrtc_ctx1 = webrtc_streamer(
-        key="example",
-        desired_playing_state=True, 
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        media_stream_constraints={"video": True, "audio": False},
-        video_processor_factory=VideoTransformer,
-        )
+    with st.sidebar:
+        st.header("Webcam Stream")
+        webrtc_ctx1 = webrtc_streamer(
+            key="example",
+            desired_playing_state=True, 
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"video": True, "audio": False},
+            video_processor_factory=VideoTransformer,
+            )
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
@@ -591,17 +591,17 @@ def app_sst_with_video():
             min_value=1, max_value=3, value=1, step=1
             )
         
-        with st.sidebar:
-            webrtc_ctx = webrtc_streamer(
-                key="speech-to-text and video",
-                desired_playing_state=True, 
-                mode=WebRtcMode.SENDONLY,  #SENDRECV, #.
-                audio_receiver_size=st.session_state.audio_receiver_size, #audio_receiver_size,  #1024　#512 #デフォルトは4
-                #queued_audio_frames_callback=queued_audio_frames_callback,
-                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-                media_stream_constraints={"video": False, "audio": True},
-                video_processor_factory=VideoTransformer,
-                )
+        #with st.sidebar:
+        webrtc_ctx = webrtc_streamer(
+            key="speech-to-text and video",
+            desired_playing_state=True, 
+            mode=WebRtcMode.SENDONLY,  #SENDRECV, #.
+            audio_receiver_size=st.session_state.audio_receiver_size, #audio_receiver_size,  #1024　#512 #デフォルトは4
+            #queued_audio_frames_callback=queued_audio_frames_callback,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"video": False, "audio": True},
+            #video_processor_factory=VideoTransformer,
+            )
             
         if not webrtc_ctx.state.playing:
             return
