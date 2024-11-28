@@ -546,7 +546,7 @@ def app_sst_with_video():
             key="camera",
             desired_playing_state=True, 
             mode=WebRtcMode.SENDRECV, #.SENDONLY,  #
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            #rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
             media_stream_constraints={"video": True, "audio": False},
             )
     #st.sidebar.header("Capture Image") 
