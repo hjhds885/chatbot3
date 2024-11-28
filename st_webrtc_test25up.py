@@ -137,12 +137,11 @@ def streaming_text_speak(llm_response):
 
                     # 音声の再生
                     # チェックする文字列
-                    #patterns = ["\n\n1.", "\n\n2.","\n\n3.", "\n\n4.""\n\n5.", "\n\n6.", "\n\n7.","\n\n8.", "\n\n9.""\n\n10.", "\n\n11."]
                     if re.search(r"\n\n", segment):
                         print("文字列に '\\n\\n' が含まれています。")
-                        time.sleep(2) 
-                    else:
-                        print("文字列に '\\n\\n' は含まれていません。")
+                        #time.sleep(1) 
+                    #else:
+                        #print("文字列に '\\n\\n' は含まれていません。")
                     #st.audio(audio_buffer, format="audio/mp3",autoplay = True)
                     # 音声データをBase64にエンコード
                     audio_base64 = base64.b64encode(output_buffer.read()).decode()
@@ -164,7 +163,6 @@ def streaming_text_speak(llm_response):
                     time.sleep(a*0.00004)  # テキストストリーミング速度に同期
                 except Exception as e:
                   time.sleep(2) 
-
 
 #  LLM問答関数   
 async def query_llm(user_input,frame):
@@ -298,6 +296,7 @@ class VideoTransformer(VideoTransformerBase):
         def recv(self, frame):   
             self.frame = frame.to_ndarray(format="bgr24")
             return frame
+        
 async def process_audio(audio_data_bytes, sample_rate):
     #with wave.open(audio_data_io, 'wb') as wf:
     #with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:    
@@ -334,7 +333,7 @@ async def process_audio(audio_data_bytes, sample_rate):
     else:
         print(answer)
         return answer
-########################################################################### 
+
 def save_audio(audio_segment: AudioSegment, base_filename: str) -> None:
     filename = f"{base_filename}_{int(time.time())}.wav"
     audio_segment.export(filename, format="wav")
@@ -366,18 +365,21 @@ def transcribe(audio_segment: AudioSegment, debug: bool = False) -> str:
         if len(answer) < 5 or "ご視聴" in answer or "お疲れ様" in answer:
             #print("テキスト出力が空")
             #print("transcribeルーチンのtext(answer)=",answer)
-            return None
-        #elif "ご視聴" in answer or "お疲れ様" in answer:
+            return ""
+        elif "見てくれてありがとう" in answer or "はっはっは" in answer:
             #print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
-            #return None 
-        
+            return "" 
+        elif "んんんんんん" in answer :
+            #print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
+            return "" 
     tmpfile.close()  
     os.remove(tmpfile.name)
     print("transcribeルーチンのtext(answer)=",answer)
     st.session_state.text_output = answer
     return answer
-###############################################################    
+  
 def frame_energy(frame):
+    samples=[]
     # フレームのデータをnumpy配列として読み込み
     samples = np.frombuffer(frame.to_ndarray().tobytes(), dtype=np.int16)
     # NaN、正の無限大、負の無限大を0に置換
@@ -388,10 +390,10 @@ def frame_energy(frame):
     # 負の値を絶対値に変換して処理 
     samples = np.abs(samples)
     try:
-        #print(np.mean(samples**2))
+        #print("samples=",samples)
         energy = np.sqrt(np.mean(samples**2))
         #print("energy=",energy)  #50-90
-        return energy  #if not np.isnan(energy) else 0.0 これ付加するとだめ音声が途切れる
+        return energy  
     except Exception as e:
         #print(f"Error exporting audio: {e}")
         return 0.0
@@ -404,7 +406,7 @@ def frame_amplitude(audio_frame):
 
 def process_audio_frames(audio_frames, sound_chunk, silence_frames, energy_threshold, amp_threshold):
     """
-    音声フレームを順次処理し、無音フレームの数をカウントすることです。
+    音声フレームを順次処理し、無音フレームの数をカウント。
     無音フレームが一定数以上続いた場合、無音区間として処理し、後続の処理（例えば、音声認識のトリガー）に役立てます。
     この処理により、無音や音声の有無を正確に検出することができます。
 
@@ -443,7 +445,6 @@ def add_frame_to_chunk(audio_frame, sound_chunk):
         sound_chunk (AudioSegment): 現在のサウンドチャンク。
     戻り値：
         AudioSegment: 更新されたサウンドチャンク。
-   
     """
     sound = pydub.AudioSegment(
         data=audio_frame.to_ndarray().tobytes(),
@@ -454,7 +455,7 @@ def add_frame_to_chunk(audio_frame, sound_chunk):
     sound_chunk += sound
     return sound_chunk
 
-def handle_silence(sound_chunk, silence_frames, silence_frames_threshold, text_output):
+def handle_silence(sound_chunk, silence_frames, silence_frames_threshold):
     """
     オーディオストリーム内の無音を処理します。 
     引数：
@@ -474,10 +475,9 @@ def handle_silence(sound_chunk, silence_frames, silence_frames_threshold, text_o
             #text_output.write(text)
             #print("handle_silenceルーチンのtext=",text)
             #print("オーディオストリーム内の無音時の応答=",text)
-
+            
             sound_chunk = pydub.AudioSegment.empty()
             silence_frames = 0
-
     return sound_chunk, silence_frames
 
 def handle_queue_empty(sound_chunk, text_output):
@@ -491,12 +491,36 @@ def handle_queue_empty(sound_chunk, text_output):
     """
     if len(sound_chunk) > 0:
         text = transcribe(sound_chunk)
-        text_output.write(text)
-        #print("handle_queue_emptyルーチンのtext=",text)
+        #text_output.write(text)
         #st.session_state.text_output = text
         sound_chunk = pydub.AudioSegment.empty()
-
     return sound_chunk
+
+# カスタムキューの作成 
+# 固定サイズのキューを実現するためのもの
+class CustomQueue: 
+    def __init__(self, maxsize): 
+        self.queue = deque(maxlen=maxsize)
+        #maxsize という引数を受け取り、そのサイズのdeque（双方向キュー）を作成します。
+        # dequeはPythonのコレクションの一種で、リストのようなもので、
+        # maxlenを指定することでキューの最大サイズを設定できます。自動的に古いアイテムを削除します。 
+    def put(self, item): 
+        #print("len(self.queue)=",len(self.queue))
+        # maxlenがNoneでないことを確認してから比較
+        if self.queue.maxlen is not None and len(self.queue) >= self.queue.maxlen:
+            print("Queue overflow. Oldest item will be discarded.") 
+        self.queue.append(item)
+        #キューに新しいアイテムを追加 
+    def get(self): 
+        #キューから最も古いアイテムを取り出して返します。
+        #キューが空でない場合はpopleftメソッドを使って最も古いアイテムを取り出し、
+        # キューが空の場合はqueue.Empty例外を発生させます。
+        if len(self.queue) > 0: 
+            return self.queue.popleft() 
+        else: 
+            raise queue.Empty 
+    def qsize(self): 
+        return len(self.queue)         
 
 def app_sst_with_video():
     """
@@ -513,23 +537,23 @@ def app_sst_with_video():
         silence_frames_threshold (int, オプション): 文字起こしをトリガーするための連続する静寂フレームの数。デフォルトは100フレーム。
     """
     text_input = ""
-   
+    
     st.session_state.audio_receiver_size =4096 #2048
     # サイドバーにWebRTCストリームを表示
     with st.sidebar:
-        st.header("Webcam Stream")
-        webrtc_ctx1 = webrtc_streamer(
-            key="example",
+        st.header("Webカメラ画像")
+        ctx = webrtc_streamer(
+            key="camera",
             desired_playing_state=True, 
+            mode=WebRtcMode.SENDRECV, #.SENDONLY,  #
             rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
             media_stream_constraints={"video": True, "audio": False},
-            video_processor_factory=VideoTransformer,
             )
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
     status_indicator = st.sidebar.empty() # プレースホルダーを作成
-    st.sidebar.title("Options")
+    st.sidebar.title("オプション")
     init_messages()
     text_output = st.empty()
     #stで使う変数初期設定
@@ -554,104 +578,134 @@ def app_sst_with_video():
         # 出力方法の選択
         output_method = st.sidebar.radio("出力方法", ("テキスト", "音声"))
         st.session_state.output_method = output_method
+    text_output = st.empty() # プレースホルダーを作成
+
+    audio_receiver_size = st.sidebar.slider(
+    "音声受信容量。デフォルト4096:", 
+    min_value=512, max_value=4096, value=4096, step=512
+    )
     
     # チャット履歴の表示 
     for role, message in st.session_state.get("message_history", []):
         st.chat_message(role).markdown(message)
-      
+
+    with st.sidebar:
+        webrtc_ctx = webrtc_streamer(
+            key="video and audio",
+            desired_playing_state=True, 
+            mode=WebRtcMode.SENDONLY,  #SENDRECV, #
+            audio_receiver_size=st.session_state.audio_receiver_size,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"video": True, "audio": True},
+            video_processor_factory=VideoTransformer,
+            )  
     ###################################################################
     #音声入力（テキストに変換した入力）の対話ループ
-    #print("Before_st.session_state.input_method=",st.session_state.input_method)
     if st.session_state.input_method == "音声": 
         st.write("🤖何か話して!")
         #status_indicator.write("音声認識動作中...")
         
-        text_output = st.empty() # プレースホルダーを作成
-
-        audio_receiver_size = st.sidebar.slider(
-        "audio_receiver_size(音声受信容量。デフォルト4096):", 
-        min_value=512, max_value=4096, value=4096, step=512
-        )
         # 無音を検出するための閾値    
         energy_threshold = st.sidebar.slider(
-        "energy_threshold(無音最大エネルギー。デフォルト300):", 
-        min_value=10, max_value=600, value=300, step=50
+        "無音最大エネルギー。デフォルト400:", 
+        min_value=100, max_value=900, value=400, step=100
         )
+        energy_indicator = st.sidebar.empty() 
+
         amp_threshold = st.sidebar.slider(
-            "amp_threshold(無音最大振幅。デフォルト600):", 
-            min_value=0, max_value=1200, value=600, step=50
+            "無音最大振幅。デフォルト800:", 
+            min_value=200, max_value=1600, value=800, step=100
             )
+        amp_indicator = st.sidebar.empty() 
+
         silence_frames_threshold = st.sidebar.slider(
-            "silence_frames_threshold(連続無音区間（音声途切れフレーム数）。デフォルト100):", 
+            "音声途切れ検出幅。デフォルト100:", 
             min_value=0, max_value=200, value=100, step=10
             )
+        
         #60がBest,デフォルト100
-        timeout = st.sidebar.slider(
-            "timeout(フレームを取得するためのタイムアウト。デフォルト3秒):", 
+        st.session_state.timeout = st.sidebar.slider(
+            "音声検出タイムアウト。デフォルト3秒:", 
             min_value=1, max_value=3, value=1, step=1
             )
         
-        with st.sidebar:
-            webrtc_ctx = webrtc_streamer(
-                key="speech-to-text and video",
-                desired_playing_state=True, 
-                mode=WebRtcMode.SENDONLY,  #SENDRECV, #.
-                audio_receiver_size=st.session_state.audio_receiver_size, #audio_receiver_size,  #1024　#512 #デフォルトは4
-                #queued_audio_frames_callback=queued_audio_frames_callback,
-                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-                media_stream_constraints={"video": False, "audio": True},
-                #video_processor_factory=VideoTransformer,
-                )
-            
         if not webrtc_ctx.state.playing:
             return
         #stで使う変数初期設定
         st.session_state.energy_threshold = energy_threshold
         st.session_state.amp_threshold = amp_threshold
         st.session_state.silence_frames_threshold = silence_frames_threshold
-        st.session_state.timeout = timeout
 
         sound_chunk = pydub.AudioSegment.empty()
         silence_frames = 0
+        #print("ここを通過",webrtc_ctx.audio_receiver.get_frames)
+        if webrtc_ctx is None:
+            st.error("WebRTC context is not initialized. Please check your setup.")
+        if webrtc_ctx and webrtc_ctx.audio_receiver is None:
+            st.error("Audio receiver is not available. Please check the WebRTC mode.")
+        if webrtc_ctx and webrtc_ctx.state.playing and webrtc_ctx.audio_receiver:
+            audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=st.session_state.timeout)
+            #st.write(f"Received {len(audio_frames)} audio frames.")
+        else:
+            st.info("Waiting for audio stream to initialize...")
 
-        
+        #CustomQueue クラスを使ってキューを作成し、
+        # オーバーフローが発生した場合には古いアイテムを削除するようにしています。
+        # これにより、キューがいっぱいになっても新しいデータを受け取ることができます。
+        # CustomQueueのインスタンス作成 
+        #audio_queue = CustomQueue(MAX_QUEUE_SIZE)
+        audio_queue = CustomQueue(st.session_state.audio_receiver_size)
+
         while True:
             if webrtc_ctx.audio_receiver:
-                timeout=st.session_state.timeout
-                energy_threshold=st.session_state.energy_threshold
-                amp_threshold=st.session_state.amp_threshold
-                silence_frames_threshold= st.session_state.silence_frames_threshold    
 
+                #handle_queue_overflow(webrtc_ctx.audio_receiver,st.session_state.audio_receiver_size)
+                
                 try:
-                    audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=timeout)
-                  
+                    audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=st.session_state.timeout)
+                    #print("len(audio_frames)=",len(audio_frames))
+                    
+                    for frame in audio_frames:
+                        audio_queue.put(frame)    
                 except queue.Empty:
                     status_indicator.write("No frame arrived.")
                     sound_chunk = handle_queue_empty(sound_chunk, text_output)
                     continue
-                sound_chunk, silence_frames ,energy,amplitude= process_audio_frames(audio_frames, sound_chunk, silence_frames, energy_threshold,amp_threshold)
-                sound_chunk, silence_frames = handle_silence(sound_chunk, silence_frames, silence_frames_threshold, text_output)
-                
-                try:
-                    energy = 0.0 if np.isnan(energy) else energy
-                    energy = round(energy)
+                #print("len(audio_frames)=",len(audio_frames))    
+                #sound_chunk, silence_frames ,energy,amplitude= process_audio_frames(audio_frames, sound_chunk, silence_frames, st.session_state.energy_threshold,st.session_state.amp_threshold)
+                #sound_chunk, silence_frames = handle_silence(sound_chunk, silence_frames, st.session_state.silence_frames_threshold)
+                try: 
+                    while audio_queue.qsize() > 0: 
+                        frame = audio_queue.get() 
+                        sound_chunk, silence_frames, energy, amplitude = process_audio_frames([frame], sound_chunk, silence_frames, st.session_state.energy_threshold, st.session_state.amp_threshold) 
+                        sound_chunk, silence_frames = handle_silence(sound_chunk, silence_frames, st.session_state.silence_frames_threshold) 
+                        #print("len(sound_chunk) =",len(sound_chunk),"audio_queue.qsize() =",audio_queue.qsize() )
+                        #print("audio_queue.qsize() =",audio_queue.qsize())    
+                        # キューからデータを取得して処理 
+                        try:
+                            energy = 0.0 if np.isnan(energy) else energy
+                            energy = round(energy)
+                        except Exception as e:
+                            #print(f"Error exporting round(energy): {e}")
+                            energy = 0
 
-                except Exception as e:
-                    #print(f"Error exporting round(energy): {e}")
-                    energy = 0
-                status_indicator.write(f"音声レベル:\n エネルギー={energy}/threshold={energy_threshold},\n 最大振幅={amplitude}/threshold={amp_threshold}")
+                        energy_indicator.write(f"音声エネルギー={energy}")
+                        amp_indicator.write(f"音声振幅={amplitude}")
+                        if len(st.session_state.text_output) > 4 :
+                            print("st.session_state.text_output=",st.session_state.text_output)    
+                            text_input =  st.session_state.text_output 
+                            st.session_state.text_output = ""
+                            st.write(f"Received {len(audio_frames)} audio frames.")
+                            #これ以降は、音声入力、テキスト入力共通の処理へ
+                            qa(text_input,webrtc_ctx,cap_title,cap_image)
+                            st.write(f"🤖何か話して!")  
+                            text_input = ""
+                except queue.Empty: 
+                    status_indicator.write("Queue is empty.")
+
             else:    
                 status_indicator.write("音声認識停止")
 
-            if len(st.session_state.text_output) > 4 :
-                print("st.session_state.text_output=",st.session_state.text_output)    
-                text_input =  st.session_state.text_output 
-                st.session_state.text_output = ""
-            #これ以降は、音声入力、テキスト入力共通の処理へ
-            if text_input: 
-                qa(text_input,webrtc_ctx1,cap_title,cap_image)
-                st.write(f"🤖何か話して!")  
-                text_input = ""
                 
     ################################################################### 
     # テキスト入力の場合
@@ -694,15 +748,15 @@ def app_sst_with_video():
         if button_input:
             text_input = button_input
         if text_input:
-            qa(text_input,webrtc_ctx1,cap_title,cap_image)
+            qa(text_input,webrtc_ctx,cap_title,cap_image)
     ###################################################################################
-def qa(text_input,webrtc_ctx1,cap_title,cap_image):
+def qa(text_input,webrtc_ctx,cap_title,cap_image):
      # 末尾の空白の数を確認
     trailing_spaces = len(text_input) - len(text_input.rstrip())
     print(f"入力テキスト末尾の空白の数: {trailing_spaces}")
     # 末尾の空白を削除
     cleaned_text = text_input.rstrip()
-    print(f"入力テキスト末尾の空白を除去した文字列: '{cleaned_text}'")
+    #print(f"入力テキスト末尾の空白を除去した文字列: '{cleaned_text}'")
     with st.chat_message('user'):   
         st.write(cleaned_text) 
     # 画像と問い合わせ入力があったときの処理
@@ -711,15 +765,13 @@ def qa(text_input,webrtc_ctx1,cap_title,cap_image):
         # 画像と問い合わせ入力があったときの処理
         #現在の画像をキャプチャする
         #キャプチャー画像入力
-        if webrtc_ctx1.video_transformer: 
-            cap = webrtc_ctx1.video_transformer.frame
+        if webrtc_ctx.video_transformer:  
+            cap = webrtc_ctx.video_transformer.frame
         if cap is not None :
             #st.sidebar.header("Capture Image") 
             cap_title.header("Capture Image")     
             cap_image.image(cap, channels="BGR")
-        else:
-            st.warning("WebRTCストリームがまだ初期化されていません。")
-            
+            # if st.button("Query LLM : 画像の内容を説明して"):
     # if st.button("Query LLM : 画像の内容を説明して"):
     with st.spinner("Querying LLM..."):
         loop = asyncio.new_event_loop()
