@@ -27,6 +27,7 @@ import os
 import re
 from pydub.effects import low_pass_filter, high_pass_filter
 from io import BytesIO
+import threading
 
 def init_page():
     st.set_page_config(
@@ -537,18 +538,43 @@ def app_sst_with_video():
         silence_frames_threshold (int, オプション): 文字起こしをトリガーするための連続する静寂フレームの数。デフォルトは100フレーム。
     """
     text_input = ""
-    
+    frames_deque_lock = threading.Lock()
+    frames_deque: deque = deque([])
+
+    async def queued_audio_frames_callback(
+        frames: List[av.AudioFrame],
+    ) -> av.AudioFrame:
+        with frames_deque_lock:
+            frames_deque.extend(frames)
+
+        # Return empty frames to be silent.
+        new_frames = []
+        for frame in frames:
+            input_array = frame.to_ndarray()
+            new_frame = av.AudioFrame.from_ndarray(
+                np.zeros(input_array.shape, dtype=input_array.dtype),
+                layout=frame.layout.name,
+            )
+            new_frame.sample_rate = frame.sample_rate
+            new_frames.append(new_frame)
+
+        return new_frames
+
     st.session_state.audio_receiver_size =4096 #2048
     # サイドバーにWebRTCストリームを表示
     with st.sidebar:
         st.header("Webカメラ画像")
-        ctx = webrtc_streamer(
-            key="camera",
+        webrtc_ctx = webrtc_streamer(
+            key="speech-to-text-w-video",
             desired_playing_state=True, 
             mode=WebRtcMode.SENDRECV, #.SENDONLY,  #
-            #rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": False},
-            )
+            audio_receiver_size=st.session_state.audio_receiver_size,  #1024　#512 #デフォルトは4
+            #小さいとQueue overflow. Consider to set receiver size bigger. Current size is 1024.
+            queued_audio_frames_callback=queued_audio_frames_callback,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"video": True, "audio": True},
+            video_processor_factory=VideoTransformer,  #機能している？
+        )
     #st.sidebar.header("Capture Image") 
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
