@@ -363,12 +363,16 @@ async def process_audio(audio_data_bytes, sample_rate):
     
         
     # テキスト出力が空、または空白である場合もチェック
-    if answer == "" :
-        print("テキスト出力が空")
-        #return None 
-    elif "ご視聴" in answer or "お疲れ様" in answer:
-        print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
-        #return None 
+    if len(answer) < 5 or "ご視聴" in answer or "お疲れ様" in answer:
+            #print("テキスト出力が空")
+            #print("transcribeルーチンのtext(answer)=",answer)
+            return ""
+    elif "見てくれてありがとう" in answer or "はっはっは" in answer:
+        #print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
+        return "" 
+    elif "んんんんんん" in answer :
+        #print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
+        return "" 
     else:
         print("answer=",answer)
         st.session_state.user_input = answer
