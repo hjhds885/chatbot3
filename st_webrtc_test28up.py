@@ -429,7 +429,8 @@ def app_sst_with_video():
     ###################################################################
     #音声入力（テキストに変換した入力）の対話ループ
     #print("Before_st.session_state.input_method=",st.session_state.input_method)
-    if st.session_state.input_method == "音声": 
+    if st.session_state.input_method == "音声":
+        st.session_state["streaming"] = False  # Webカメラストリーミング停止
         st.write("🤖何か話して! ....  音声認識を開始しました。") 
         status_indicator = st.empty() # プレースホルダーを作成
         #status_indicator.write("音声認識動作中...")
@@ -493,6 +494,7 @@ def app_sst_with_video():
     # テキスト入力の場合
     # テキスト入力フォーム
     if st.session_state.input_method == "テキスト":
+        st.session_state["streaming"] = True  # Webカメラストリーミング再生
         button_input = ""
         # 4つの列を作成
         col1, col2, col3, col4 = st.columns(4)
@@ -542,7 +544,7 @@ def qa(text_input,webrtc_ctx,cap_title,cap_image):
     with st.chat_message('user'):   
         st.write(cleaned_text) 
 
-    st.session_state["streaming"] = False  # Webカメラストリーミング停止
+    
     
     # 画像と問い合わせ入力があったときの処理
     cap = None 
@@ -566,7 +568,7 @@ def qa(text_input,webrtc_ctx,cap_title,cap_image):
         st.session_state.result = result
     result = ""
     text_input="" 
-    st.session_state["streaming"] = True  # Webカメラストリーミング再生 
+     
 ###################################################################      
 if __name__ == "__main__":
     main()
