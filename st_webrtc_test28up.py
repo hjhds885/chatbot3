@@ -479,9 +479,9 @@ def app_sst_with_video():
                     if len(st.session_state.user_input) > 4 :
                         print("st.session_state.user_input=",st.session_state.user_input)  
                         text_input = st.session_state.user_input
-                        
+                        st.write("text_input:",text_input)
                         #これ以降は、音声入力、テキスト入力共通の処理へ
-                        qa(text_input,webrtc_ctx,cap_title,cap_image)
+                        #qa(text_input,webrtc_ctx,cap_title,cap_image)
                         st.write(f"🤖何か話して!")
                         #status_indicator.write("🤖何か話して!")  
                         text_input = ""       
