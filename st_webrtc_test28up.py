@@ -115,7 +115,7 @@ async def streaming_text_speak(llm_response):
                 # gTTSで音声生成（部分テキスト）
                 try:
                     # アスタリスクやその他の発音に不要な文字を削除
-                    cleaned_segment = re.sub(r'[\*!-]', '', segment)
+                    cleaned_segment = re.sub(r'[\*#*!-]', '', segment)
                     tts = gTTS(cleaned_segment, lang="ja")  # 音声化
                     audio_buffer = BytesIO()
                     tts.write_to_fp(audio_buffer)  # バッファに書き込み
@@ -370,7 +370,7 @@ async def process_audio(audio_data_bytes, sample_rate):
     elif "見てくれてありがとう" in answer or "はっはっは" in answer:
         #print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
         return "" 
-    elif "んんんんんん" in answer :
+    elif "んんんんんん" in answer or "スタッフさんのおかげで" in answer:
         #print("テキスト出力が「ご視聴」、または「お疲れ様」を含む")
         return "" 
     else:
@@ -401,13 +401,16 @@ def app_sst_with_video():
             new_frames.append(new_frame)
 
         return new_frames
-    
+        
+     # ストリーミング状態を管理するセッション状態を初期化
+    if "streaming" not in st.session_state:
+        st.session_state["streaming"] = True  # 初期状態でストリーミング再生中
     # サイドバーにWebRTCストリームを表示
     with st.sidebar:
         st.header("Webcam Stream")
         webrtc_ctx = webrtc_streamer(
             key="speech-to-text-w-video",
-            desired_playing_state=True, 
+            desired_playing_state=st.session_state["streaming"], 
             mode=WebRtcMode.SENDRECV, #.SENDONLY,  #
             #audio_receiver_size=2048,  #1024　#512 #デフォルトは4
             #小さいとQueue overflow. Consider to set receiver size bigger. Current size is 1024.
@@ -538,6 +541,9 @@ def qa(text_input,webrtc_ctx,cap_title,cap_image):
     #print(f"入力テキスト末尾の空白を除去した文字列: '{cleaned_text}'")
     with st.chat_message('user'):   
         st.write(cleaned_text) 
+
+    st.session_state["streaming"] = False  # Webカメラストリーミング停止
+    
     # 画像と問い合わせ入力があったときの処理
     cap = None 
     if st.session_state.input_img == "有":
@@ -560,6 +566,7 @@ def qa(text_input,webrtc_ctx,cap_title,cap_image):
         st.session_state.result = result
     result = ""
     text_input="" 
+    st.session_state["streaming"] = True  # Webカメラストリーミング再生 
 ###################################################################      
 if __name__ == "__main__":
     main()
