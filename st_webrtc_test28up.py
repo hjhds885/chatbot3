@@ -430,7 +430,7 @@ def app_sst_with_video():
     #音声入力（テキストに変換した入力）の対話ループ
     #print("Before_st.session_state.input_method=",st.session_state.input_method)
     if st.session_state.input_method == "音声":
-        st.session_state["streaming"] = False  # Webカメラストリーミング停止
+        #st.session_state["streaming"] = False  # Webカメラストリーミング停止
         st.write("🤖何か話して! ....  音声認識を開始しました。") 
         status_indicator = st.empty() # プレースホルダーを作成
         #status_indicator.write("音声認識動作中...")
