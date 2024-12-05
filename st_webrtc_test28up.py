@@ -88,7 +88,7 @@ def select_model():
             api_key= st.secrets.key.GOOGLE_API_KEY,
         )
 #音声出力関数
-def streaming_text_speak(llm_response):
+async def streaming_text_speak(llm_response):
     # 末尾の空白の数を確認
     trailing_spaces = len(llm_response) - len(llm_response.rstrip())
     print(f"末尾の空白の数: {trailing_spaces}")
@@ -273,7 +273,7 @@ async def query_llm(user_input,frame):
             if st.session_state.output_method == "音声":
                 response = chain.invoke({"user_input":user_input})
                 #speak(response)   #st.audio ok
-                streaming_text_speak(response)
+                result = await streaming_text_speak(response)
             else:    
                 stream = chain.stream({"user_input":user_input})
             # LLMの返答を表示する  Streaming
