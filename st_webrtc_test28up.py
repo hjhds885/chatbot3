@@ -17,6 +17,7 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_cohere.chat_models import ChatCohere
+from langchain_ollama import ChatOllama
 import base64
 from gtts import gTTS
 import os
@@ -56,10 +57,17 @@ def select_model():
     #model = st.sidebar.radio("大規模言語モデルを選択:", models)
     model = st.sidebar.selectbox(
         "LLM大規模言語モデルを選択",
-        ["GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]
+        ["llava-llama3","GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]
     )
-       
-    if model == "GPT-4o":  #"gpt-4o 'gpt-4o-2024-08-06'" 有料？、Best
+    if model == "llava-llama3":  
+        st.session_state.model_name = "llava-llama3"
+        return ChatOllama(
+            temperature=temperature,
+            model=st.session_state.model_name,
+            #api_key= st.secrets.key.OPENAI_API_KEY,
+            #streaming=True,
+        )      
+    elif model == "GPT-4o":  #"gpt-4o 'gpt-4o-2024-08-06'" 有料？、Best
         st.session_state.model_name = "gpt-4o"
         return ChatOpenAI(
             temperature=temperature,
@@ -350,7 +358,11 @@ async def process_audio(audio_data_bytes, sample_rate):
     temp_audio_file_path = temp_audio_file.name 
     temp_audio_file.close()  
     # Whisperのモデルをロード
-    model = whisper.load_model("small")  # モデルのサイズは適宜選択
+    #モデルのインスタンスを1つだけ保持し、繰り返し利用    
+    if "whisper_model" not in st.session_state:
+        st.session_state.whisper_model = whisper.load_model("small")
+    whisper_model = st.session_state.whisper_model  
+    # モデルのサイズは適宜選択, weights_only=True # モデルのサイズは適宜選択
     #base:74M,small:244M,medium,large
     # 音声をデコード
     try:
