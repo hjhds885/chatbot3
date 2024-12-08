@@ -367,7 +367,7 @@ async def process_audio(audio_data_bytes, sample_rate):
     # 音声をデコード
     try:
         # Whisperで音声をテキストに変換
-        result = model.transcribe(temp_audio_file_path, language="ja")  # 日本語指定
+        result = whisper_model.transcribe(temp_audio_file_path, language="ja")  # 日本語指定
         answer = result['text']
     finally:
         # 一時ファイルを削除
