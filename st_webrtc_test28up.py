@@ -57,7 +57,7 @@ def select_model():
     #model = st.sidebar.radio("大規模言語モデルを選択:", models)
     model = st.sidebar.selectbox(
         "LLM大規模言語モデルを選択",
-        ["llava-llama3","GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]
+        ["GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]
     )
     if model == "llava-llama3":  
         st.session_state.model_name = "llava-llama3"
@@ -281,7 +281,7 @@ async def query_llm(user_input,frame):
             if st.session_state.output_method == "音声":
                 response = chain.invoke({"user_input":user_input})
                 #speak(response)   #st.audio ok
-                #result = await streaming_text_speak(response)
+                await streaming_text_speak(response)
             else:    
                 stream = chain.stream({"user_input":user_input})
             # LLMの返答を表示する  Streaming
