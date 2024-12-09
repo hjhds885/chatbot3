@@ -30,6 +30,37 @@ import queue, pydub, tempfile
 from pydub import AudioSegment
 from pydub.effects import low_pass_filter, high_pass_filter
 from io import BytesIO
+import psutil
+import gc
+from scipy.signal import resample
+
+# 関数でメモリ使用量を取得
+def get_memory_usage():
+    process = psutil.Process()
+    mem_info = process.memory_info()
+    # メモリ使用量をMB単位で返す
+    return mem_info.rss / (1024 * 1024)
+
+def current_memory_use(memory_use,memory_alt,memory_ok):
+    # 現在のメモリ使用量を取得
+    current_memory_usage = get_memory_usage()
+    # メモリ使用量を表示
+    
+    memory_use.metric("現在のメモリ使用量 (MB)", f"{current_memory_usage:.2f}")
+    #print("現在のメモリ使用量 (MB)", f"{current_memory_usage:.2f}")
+    # メモリ制約を定義
+    MEMORY_LIMIT_MB = 2700  # 1GB
+    # メモリ使用量が制約を超えた場合の警告
+    if current_memory_usage > MEMORY_LIMIT_MB:
+      
+        memory_alt.error(f"メモリ使用量が制約 ({MEMORY_LIMIT_MB} MB) を超えました。処理を中断してください。")
+        #st.stop()
+        print(f"メモリ使用量が制約 ({MEMORY_LIMIT_MB} MB) を超えました。処理を中断してください。")
+    else:
+        
+        memory_ok.success("メモリ使用量は正常範囲内です。")
+        #print("メモリ使用量は正常範囲内です。")
+
 
 def init_page():
     st.set_page_config(
@@ -98,15 +129,18 @@ def select_model():
 #音声出力関数
 async def streaming_text_speak(llm_response):
     # 末尾の空白の数を確認
-    trailing_spaces = len(llm_response) - len(llm_response.rstrip())
-    print(f"末尾の空白の数: {trailing_spaces}")
+    #trailing_spaces = len(llm_response) - len(llm_response.rstrip())
+    #print(f"末尾の空白の数: {trailing_spaces}")
     # 末尾の空白を削除
-    cleaned_response = llm_response.rstrip()
-    print(f"空白を除去した文字列: '{cleaned_response}'")
+    #cleaned_response = llm_response.rstrip()
+    #print(f"空白を除去した文字列: '{cleaned_response}'")
     # 句読点やスペースを基準に分割
     #復帰文字（\r）は、**キャリッジリターン（Carriage Return）**と呼ばれる特殊文字で、
     # ASCIIコード13（10進数）に対応します。主に改行の一部として使用される制御文字です。
-    split_response = re.split(r'([\r\n!-;=:、。 \?]+)', llm_response) 
+    split_response = re.split(r'([\r\n!-;=:、。 \?]+)', llm_response)
+    # メモリ解放
+    del  llm_response
+    gc.collect() 
     #split_response = re.split(r'([;:、。 ]+😊🌟🚀🎉)', llm_response)  #?はなくてもOK
     split_response = [segment for segment in split_response if segment.strip()]  # 空要素を削除
     print(split_response)
@@ -125,52 +159,60 @@ async def streaming_text_speak(llm_response):
                     # アスタリスクやその他の発音に不要な文字を削除
                     cleaned_segment = re.sub(r'[\*#*!-]', '', segment)
                     tts = gTTS(cleaned_segment, lang="ja")  # 音声化
-                    audio_buffer = BytesIO()
-                    tts.write_to_fp(audio_buffer)  # バッファに書き込み
-                    audio_buffer.seek(0)
+                    # メモリ解放
+                    del  cleaned_segment
+                    gc.collect() 
+                    #audio_buffer = BytesIO()
+                    with BytesIO() as audio_buffer:
+                        tts.write_to_fp(audio_buffer)  # バッファに書き込み
+                        audio_buffer.seek(0)
 
                     # pydubで再生速度を変更
                     audio = AudioSegment.from_file(audio_buffer, format="mp3")
                     audio = audio._spawn(audio.raw_data, overrides={
                         "frame_rate": int(audio.frame_rate * 1.3)  # 1.5倍速
                     }).set_frame_rate(audio.frame_rate)
-                    audio_buffer.close()
+                    #audio_buffer.close()
 
                     # 音質調整
-                    audio = audio.set_frame_rate(44100)  # サンプリングレート
-                    audio = audio + 5  # 音量を5dB増加
-                    audio = audio.fade_in(500).fade_out(500)  # フェードイン・アウト
+                    #audio = audio.set_frame_rate(44100)  # サンプリングレート
+                    #audio = audio + 5  # 音量を5dB増加
+                    #audio = audio.fade_in(500).fade_out(500)  # フェードイン・アウト
                     #audio = audio.low_pass_filter(3000)  # 高音域をカット
                     audio = low_pass_filter(audio, cutoff=900)  # 高音域をカット
                     # ベースブースト（低音域を強調）
-                    low_boost = low_pass_filter(audio,1000).apply_gain(10)
-                    audio = audio.overlay(low_boost)
+                    #low_boost = low_pass_filter(audio,1000).apply_gain(10)
+                    #audio = audio.overlay(low_boost)
 
                     # バッファに再エクスポート
-                    output_buffer = BytesIO()
-                    audio.export(output_buffer, format="mp3")
-                    output_buffer.seek(0)
-
-                    # 音声の再生
-                    # チェックする文字列
-                    if re.search(r"\n\n", segment):
-                        print("文字列に '\\n\\n' が含まれています。")
-                        #time.sleep(1) 
-                    #else:
-                        #print("文字列に '\\n\\n' は含まれていません。")
-                    #st.audio(audio_buffer, format="audio/mp3",autoplay = True)
-                    # 音声データをBase64にエンコード
-                    audio_base64 = base64.b64encode(output_buffer.read()).decode()
-                    audio_buffer.close()  # バッファをクローズ
-                    a=len(audio_base64)
-                    #print(a)
-                     # HTMLタグで音声を自動再生（プレイヤー非表示、再生速度調整）
-                    audio_html = f"""
-                   <audio id="audio-player" autoplay style="display:none;">
-                        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
-                    </audio>
-                    """
-                    st.markdown(audio_html, unsafe_allow_html=True)
+                     #output_buffer = BytesIO()
+                    with BytesIO() as output_buffer:
+                        audio.export(output_buffer, format="mp3")
+                        output_buffer.seek(0)
+                        # メモリ解放
+                        del tts, audio 
+                        gc.collect() 
+    
+                        # 音声の再生
+                        # チェックする文字列
+                        #if re.search(r"\n\n", segment):
+                            #print("文字列に '\\n\\n' が含まれています。")
+                            #time.sleep(1) 
+                        #else:
+                            #print("文字列に '\\n\\n' は含まれていません。")
+                        #st.audio(audio_buffer, format="audio/mp3",autoplay = True)
+                        # 音声データをBase64にエンコード
+                        audio_base64 = base64.b64encode(output_buffer.read()).decode()
+                        audio_buffer.close()  # バッファをクローズ
+                        a=len(audio_base64)
+                        #print(a)
+                         # HTMLタグで音声を自動再生（プレイヤー非表示、再生速度調整）
+                        audio_html = f"""
+                       <audio id="audio-player" autoplay style="display:none;">
+                            <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+                        </audio>
+                        """
+                        st.markdown(audio_html, unsafe_allow_html=True)
 
                 except Exception as e:
                     #print(f"音声生成エラー: {e}")
@@ -178,9 +220,15 @@ async def streaming_text_speak(llm_response):
                 try:
                     time.sleep(a*0.00004)  # テキストストリーミング速度に同期
                 except Exception as e:
-                  time.sleep(2) 
+                  time.sleep(2)
+        # 最終的なメモリ解放
+        del split_response, partial_text,audio_buffer,audio_base64
+        gc.collect()
+
 #  LLM問答関数
 async def query_llm(user_input,frame):
+    if st.session_state.model_name ==  "llava-llama3":
+        user_input = " 次の質問に日本語で答えてください。" + user_input 
     try:
         if st.session_state.input_img == "有":    
             # 画像を適切な形式に変換（例：base64エンコードなど）
@@ -190,29 +238,6 @@ async def query_llm(user_input,frame):
             base64_image = base64.b64encode(encoded_image).decode('utf-8')  
             #image = f"data:image/jpeg;base64,{base64_image}"
         
-        if st.session_state.model_name ==  "keep_gpt-4o":
-            llm = st.session_state.llm  
-            stream = llm.stream([
-                    *st.session_state.message_history,
-                    (
-                        "user",
-                        [
-                            {
-                                "type": "text",
-                                "text": user_input
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}",
-                                    "detail": "auto"
-                                },
-                            }
-                        ]
-                    )
-                ])
-            #response = chain.invoke(user_input)
-         
         if st.session_state.model_name ==  "command-r-plus":
             print("st.session_state.model_name=",st.session_state.model_name)
             print(user_input)
@@ -303,7 +328,10 @@ async def query_llm(user_input,frame):
     user_input = ""
     base64_image = ""
     frame = ""   
-   
+    # メモリ解放
+    del user_input, base64_image, frame,response,stream,chain,prompt,output_parser
+    gc.collect() 
+    
 def main():
     #st.header("Real Time Speech-to-Text with_video")
     #画面表示
@@ -311,10 +339,10 @@ def main():
     init_messages()
     #stで使う変数初期設定
     st.session_state.llm = select_model()
-    st.session_state.input_method = ""
-    st.session_state.user_input = ""
-    st.session_state.result = ""
-    st.session_state.frame = "" 
+    st.session_state.input_method = st.session_state.get("input_method", "")
+    st.session_state.user_input = st.session_state.get("user_input", "")
+    st.session_state.result = st.session_state.get("result", "")
+    st.session_state.frame = st.session_state.get("frame", "")
     col1, col2 ,col3= st.sidebar.columns(3)
      # 各列にボタンを配置
     with col1:
@@ -333,9 +361,9 @@ def main():
     for role, message in st.session_state.get("message_history", []):
         st.chat_message(role).markdown(message)
     #データ初期値
-    user_input = ""
-    base64_image = ""
-    frame = ""    
+    #user_input = ""
+    #base64_image = ""
+    #frame = ""    
     app_sst_with_video() 
 
 class VideoTransformer(VideoTransformerBase):
@@ -369,6 +397,7 @@ async def process_audio(audio_data_bytes, sample_rate):
         # Whisperで音声をテキストに変換
         result = whisper_model.transcribe(temp_audio_file_path, language="ja")  # 日本語指定
         answer = result['text']
+        result = ""
     finally:
         # 一時ファイルを削除
         os.remove(temp_audio_file_path)
@@ -391,7 +420,16 @@ async def process_audio(audio_data_bytes, sample_rate):
         return answer
 
 def app_sst_with_video():
+    memory_use = st.sidebar.empty()
+    memory_alt = st.sidebar.empty()
+    memory_ok = st.sidebar.empty()
+    current_memory_use(memory_use,memory_alt,memory_ok)
+    
     text_input = ""
+
+    # deque の最大長を設定# メモリ使用量の削減を狙う
+    # 必要最小限の音声フレームのみ保持します。
+    frames_deque = deque(maxlen=5)  # 必要に応じて最大長を調整
     frames_deque_lock = threading.Lock()
     frames_deque: deque = deque([])
 
@@ -437,7 +475,8 @@ def app_sst_with_video():
     #status_indicator.write("Loading...")
     cap_title = st.sidebar.empty()    
     cap_image = st.sidebar.empty() # プレースホルダーを作成 
-    status_indicator = st.sidebar.empty()
+    #status_indicator = st.sidebar.empty()
+    current_memory_use(memory_use,memory_alt,memory_ok)
     ###################################################################
     #音声入力（テキストに変換した入力）の対話ループ
     #print("Before_st.session_state.input_method=",st.session_state.input_method)
@@ -450,15 +489,25 @@ def app_sst_with_video():
         
         st.sidebar.header("Capture Image")
         cap_image = st.sidebar.empty() # プレースホルダーを作成
-             
+        audio_buffer = []  # 音声データを一時的に格納するリスト 
+        i=0       
         while True:
+            # メモリ使用量を監視
+            current_memory_use(memory_use,memory_alt,memory_ok)
+                # deque の最大長を設定
+            # メモリ使用量を監視
+            mem_use= get_memory_usage() 
+            i = i + 1
+            print(f"メモリ使用量={i}回目:{mem_use}")
+            #audio =np.nan_to_num(audio_frame, nan=0.0, posinf=0.0, neginf=0.0)
+            
             if webrtc_ctx.state.playing:
                 audio_frames = []
                 with frames_deque_lock:
                     while len(frames_deque) > 0:
-                        frame = frames_deque.popleft()
+                        frame = frames_deque.popleft() #古いフレームを削除
                         audio_frames.append(frame)
-
+                #フレームを取得できなかった時
                 if len(audio_frames) == 0:
                     time.sleep(0.1)
                     #status_indicator.write("🤖何か話して!")
@@ -468,16 +517,16 @@ def app_sst_with_video():
                 for audio_frame in audio_frames:
                     
                     # フレームを numpy 配列として取得（s16 フォーマットを int16 として解釈）
-                    audio = audio_frame.to_ndarray().astype(np.int16)
-                    audio_buffer.append(audio)  # バッファにフレームデータを追加
-
+                    #audio = audio_frame.to_ndarray().astype(np.int16)
+                    #audio_buffer.append(audio)  # バッファにフレームデータを追加
+                    audio_buffer.append(audio_frame.to_ndarray().astype(np.int16)) 
                     # 正規化して -1.0 から 1.0 の範囲に収める
                     #max_val = np.max(np.abs(audio_buffer))
                     #if max_val > 0:
                         #audio_buffer = audio_buffer / max_val
 
                 if len(audio_buffer) >0:  # 100: # 
-                    # 複数フレームをまとめる
+                    # 複数フレームをまとめる フレームを結合して 1 つの音声データに
                     audio_data = np.concatenate(audio_buffer)
                     audio_data_bytes= audio_data.tobytes()
                     st.session_state.user_input=""
@@ -486,6 +535,14 @@ def app_sst_with_video():
                     
                     # バッファをクリア
                     audio_buffer.clear() 
+                    # メモリの開放
+                    audio_frames = []
+                    del audio_frames
+                    del audio_buffer[:]
+                    del audio_data
+                    del audio_data_bytes
+                    gc.collect() 
+                    
                     #print("ここを通過E2") #ここまでOK
                     #print("text_input=",text_input)
                     if len(st.session_state.user_input) > 4 :
@@ -545,7 +602,8 @@ def app_sst_with_video():
             text_input = button_input
         if text_input:
             qa(text_input,webrtc_ctx,cap_title,cap_image)
-
+            text_input = ""
+            
 def qa(text_input,webrtc_ctx,cap_title,cap_image):
      # 末尾の空白の数を確認
     trailing_spaces = len(text_input) - len(text_input.rstrip())
@@ -555,7 +613,7 @@ def qa(text_input,webrtc_ctx,cap_title,cap_image):
     #print(f"入力テキスト末尾の空白を除去した文字列: '{cleaned_text}'")
     with st.chat_message('user'):   
         st.write(cleaned_text) 
-
+        cleaned_text = ""
     
     
     # 画像と問い合わせ入力があったときの処理
@@ -580,7 +638,10 @@ def qa(text_input,webrtc_ctx,cap_title,cap_image):
         st.session_state.result = result
     result = ""
     text_input="" 
-     
+    cap = None
+    del cap
+    gc.collect() 
+
 ###################################################################      
 if __name__ == "__main__":
     main()
