@@ -222,7 +222,7 @@ async def streaming_text_speak(llm_response):
                 except Exception as e:
                   time.sleep(2)
         # 最終的なメモリ解放
-        del split_response, partial_text,audio_buffer,audio_base64
+        del split_response, partial_text,audio_buffer
         gc.collect()
 
 #  LLM問答関数
