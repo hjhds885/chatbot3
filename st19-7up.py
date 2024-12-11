@@ -28,7 +28,8 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_cohere.chat_models import ChatCohere
-from langchain_ollama import ChatOllama
+#from langchain_ollama import ChatOllama
+from langchain_ollama.chat_models import ChatOllama
 import base64
 #import keyboard
 from gtts import gTTS
