@@ -91,7 +91,7 @@ def select_model():
     #temperature = st.sidebar.slider(
         #"Temperature(回答バラツキ度合):", min_value=0.0, max_value=2.0, value=0.0, step=0.01)
     temperature = 0.0   
-    models = (  "llava-llama3","GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro")
+    models = ("llava-llama3","GPT-4o","Claude 3.5 Sonnet","Gemini 1.5 Pro")
     model = st.sidebar.radio("Choose a model（大規模言語モデルを選択）:", models)
     
     if model == "llava-llama3":  
