@@ -262,6 +262,56 @@ def streaming_text_speak(llm_response):
                     time.sleep(a*0.00004)  # テキストストリーミング速度に同期
                 except Exception as e:
                   time.sleep(2) 
+
+
+def trim_message_history(message_history, max_tokens=8192):  
+    """  
+    メッセージ履歴をトークン数で制限  
+    GPT-4
+    GPT-4: 8,192トークン
+    GPT-4 Turbo: 128,000トークン
+    GPT-4o: 128,000トークン
+    Claude
+    Claude 3 Haiku: 約200,000トークン
+    Claude 3 Sonnet: 約200,000トークン
+    Claude 3 Opus: 約200,000トークン
+    Claude 2: 100,000トークン
+    Gemini
+    Gemini Pro: 32,000トークン
+    Gemini Ultra: 最大1,000,000トークン
+    Llama 2/3
+    Llama 2 (7B-70B): 4,096トークン
+    Llama 3 (8B): 8,192トークン
+    Llama 3 (70B): 8,192トークン
+    日本語モデル
+    Rinna: 2,048トークン
+    ELYZA: 4,096トークン
+    Nekomata: 4,096トークン
+    その他
+    Command R+: 128,000トークン
+    Mistral 7B: 8,192トークン
+    Cohere: 4,096トークン
+    推奨される一般的な戦略:
+
+    安全サイズ: 4,000-8,000トークン
+    トリミング関数の実装
+    モデル固有の制限を確認
+
+    """  
+    total_tokens = 0  
+    trimmed_history = []  
+    
+    # 最新のメッセージから逆順に追加  
+    for message in reversed(message_history):  
+        message_tokens = len(message[1])  # メッセージ長さを計算  
+        if total_tokens + message_tokens <= max_tokens:  
+            trimmed_history.insert(0, message)  
+            total_tokens += message_tokens  
+        else:  
+            break  
+    
+    return trimmed_history  
+
 #  LLM問答関数   
 async def query_llm(user_input,frame):
     #print("user_input=",user_input)
@@ -396,7 +446,9 @@ async def query_llm(user_input,frame):
             # チャット履歴に追加
             st.session_state.message_history.append(("user", user_input))
             st.session_state.message_history.append(("ai", response))
-        
+            #多くのLLMには入力トークン数の制限がある
+            #履歴が長すぎると、モデルが全コンテキストを処理できなくなる
+            st.session_state.message_history = trim_message_history(st.session_state.message_history)
             return response
     except StopIteration:
         # StopIterationの処理
