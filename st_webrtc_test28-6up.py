@@ -78,7 +78,7 @@ def select_model():
     )
     if model == "phi4":  
         st.session_state.model_name = "phi4"
-        command = f"ollama run {model} "
+        command = f"ollama pull {model} "
         subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8')
         return ChatOllama(
             temperature=temperature,
@@ -88,7 +88,7 @@ def select_model():
         )
     elif model == "gemma2":
         st.session_state.model_name = "gemma2"
-        command = f"ollama run {model} "
+        command = f"ollama pull {model} "
         subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8')
         return ChatOllama(
             temperature=temperature,
@@ -98,7 +98,7 @@ def select_model():
         )
     elif model == "llava-llama3":  
         st.session_state.model_name = "llava-llama3"
-        command = f"ollama run {model} "
+        command = f"ollama pull {model} "
         subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8')
         return ChatOllama(
             temperature=temperature,
