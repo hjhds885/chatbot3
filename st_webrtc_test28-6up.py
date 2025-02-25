@@ -74,7 +74,7 @@ def select_model():
     #model = st.sidebar.radio("大規模言語モデルを選択:", models)
     model = st.sidebar.selectbox(
         "LLM大規模言語モデルを選択",
-        ["gemma2","phi4","llava-llama3","GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]
+        ["GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]  #"gemma2","phi4","llava-llama3",
     )
     if model == "phi4":  
         st.session_state.model_name = "phi4"
