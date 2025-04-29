@@ -21,7 +21,7 @@ typing_extensions
 typing-inspect
 numpy==1.26.4
 streamlit-webrtc==0.47.9
-requests==0.25.6
+requests==2.32.3
 pydub==0.25.1
 torch==2.4.0
 torchaudio==2.4.0
